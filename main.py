@@ -1,13 +1,32 @@
 # This is a sample Python script.
-import time
+import json
 from concurrent.futures.thread import ThreadPoolExecutor
 import speech_recognition as sr
 from gtts import gTTS
 import pygame
 import concurrent.futures
 from datetime import datetime
-from nltk.tokenize import word_tokenize
+import nltk.tokenize as tokenize
 import re
+import time
+import spacy
+import requests
+nlp = spacy.load("ru_core_news_lg")
+import ru_core_news_lg
+nlp = ru_core_news_lg.load()
+
+# text = "Владимир Путин является президентом России."
+# doc = nlp(text)
+#
+# # Print tokenized words
+# # print("Tokenized Words:")
+# # for token in doc:
+# #     print(token.text)
+# #
+# # # Print named entities
+# # print("\nNamed Entities:")
+# # for ent in doc.ents:
+# #     print(ent.text, ent.label_)
 
 isResponding = None
 recognizer = sr.Recognizer()
@@ -17,7 +36,6 @@ number_pattern = r'\d+'
 # Create a ThreadPoolExecutor with a maximum of 5 threads
 executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
 
-
 def processSpeech():
     with sr.Microphone() as source:
         print("Listening.")
@@ -25,7 +43,11 @@ def processSpeech():
     try:
         user_input = recognizer.recognize_google(audio, language="ru", key="AIzaSyDy6lMIltumbjiVbpqyzcmC0qsfz7TX_q0")
         print(f"{user_input}")
-        postProcessLogic(user_input)
+
+        r = requests.post('http://localhost:5005/webhooks/rest/webhook', json={"message": user_input})
+        print(r.json())
+
+        #postProcessLogic(user_input)
         # Now you can process `user_input` as text.
     except sr.UnknownValueError:
         print("Sorry, I could not understand what you said.")
@@ -39,11 +61,11 @@ def timer(waitTime):
 
 
 def postProcessLogic(user_input):
-    messageTokens = word_tokenize(user_input)
+    doc = nlp(user_input)
     # if isResponding:
 
-    for token in messageTokens:
-        if token == "таймер" or token == "Таймер":
+    for word in doc:
+        if word.text == "таймер":
             numbers_found = re.findall(number_pattern, user_input)
             if numbers_found:
                 parsed_number = int(numbers_found[0])
